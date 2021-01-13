@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['src/get_data.py'],
+a = Analysis(['get_data.py'],
              pathex=['/home/don/Projects/get_connected_api'],
              binaries=[],
              datas=[],
