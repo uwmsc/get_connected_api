@@ -54,7 +54,7 @@ for entity in entity_list:
     i = 0
     while i < rowcount:
         #set rowcount to low number for testing/debugging. Comment this out to return the full rowsets
-        rowcount = 40
+        #rowcount = 40
 
         #Show progress
         print(str(i) + ' of ' + str(rowcount) + ' ' + entity)
