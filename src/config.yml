@@ -12,3 +12,4 @@ get_connected:
     - 'volunteer/response'
     - 'volunteer/user'
   api_documentation_url : 'http://api2.galaxydigital.com/volunteer/docs/'
+  row_limit: '0'

@@ -27,6 +27,7 @@ if config:
         password = cfg['mssql']['password']
         api_key = cfg['get_connected']['api_key_secret']
         entity_list = cfg['get_connected']['entity_list']
+        row_limit_override = cfg['get_connected']['row_limit']
         ymlfile.close()
 else:
     print("Error loading config file. Exiting...")
@@ -57,7 +58,8 @@ for entity in entity_list:
     i = 0
     while i < rowcount:
         # set rowcount to low number for testing/debugging. Comment this out to return the full rowsets
-        rowcount = 40
+        if int(row_limit_override) > 0:
+            rowcount = int(row_limit_override)
 
         # Show progress
         print(str(i) + ' of ' + str(rowcount) + ' ' + entity)
