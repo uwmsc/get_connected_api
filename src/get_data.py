@@ -14,7 +14,8 @@ import urllib
 os.chdir(sys.path[0])
 
 # test if config file exists
-path = os.path.dirname(os.path.realpath(__file__)) + "/config.yml"
+# path = os.path.dirname(os.path.realpath(__file__)) + "config.yml"
+path = "config.yml"
 config = os.path.exists(path)
 
 # get config values from config.yml located in project folder.
