@@ -4,7 +4,7 @@ certifi==2020.12.5
 chardet==4.0.0
 idna==2.10
 jsonschema==3.2.0
-numpy==1.19.4
+numpy==1.19.5
 odbc==0.0.1
 pandas==1.2.0
 pyaml==20.4.0
