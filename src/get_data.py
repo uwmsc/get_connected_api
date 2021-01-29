@@ -16,6 +16,7 @@ import urllib
 # test if config file exists
 # path = os.path.dirname(os.path.realpath(__file__)) + "config.yml"
 path = "config.yml"
+config = os.path.exists(path)
 
 # determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
@@ -23,13 +24,13 @@ if getattr(sys, 'frozen', False):
     # extends the sys module by a flag frozen=True and sets the app 
     # path into variable _MEIPASS'.
     application_path = sys._MEIPASS
-    config = os.path.join(application_path, path)
+    path = os.path.join(application_path, path)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
-    config = os.path.join(application_path, path)
+    path = os.path.join(application_path, path)
 
 # get config values from config.yml located in project folder.
-config = os.path.join(application_path, path)
+config = os.path.exists(path)
 if config:
     with open(config, "r") as ymlfile:
         cfg = yaml.safe_load(ymlfile)
