@@ -32,7 +32,7 @@ else:
 # get config values from config.yml located in project folder.
 config = os.path.exists(path)
 if config:
-    with open(config, "r") as ymlfile:
+    with open(path, "r") as ymlfile:
         cfg = yaml.safe_load(ymlfile)
         sqlhost = cfg['mssql']['sqlhost']
         sqldb = cfg['mssql']['database']
