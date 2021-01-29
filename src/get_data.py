@@ -11,7 +11,7 @@ import sqlalchemy
 import urllib
 
 # set working directory to current script
-os.chdir(sys.path[0])
+#os.chdir(sys.path[0])
 
 # test if config file exists
 # path = os.path.dirname(os.path.realpath(__file__)) + "config.yml"
