@@ -31,3 +31,6 @@ exe = EXE(pyz,
           upx_exclude=[],
           runtime_tmpdir=None,
           console=True )
+
+import shutil
+shutil.copyfile('config.yml', '{0}/config.yml'.format(DISTPATH))
