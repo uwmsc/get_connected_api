@@ -34,6 +34,7 @@ config = os.path.exists(path)
 if config:
     with open(path, "r") as ymlfile:
         cfg = yaml.safe_load(ymlfile)
+        print(cfg)
         sqlhost = cfg['mssql']['sqlhost']
         sqldb = cfg['mssql']['database']
         username = cfg['mssql']['username']
