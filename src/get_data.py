@@ -17,6 +17,7 @@ import urllib
 # path = os.path.dirname(os.path.realpath(__file__)) + "config.yml"
 path = "config.yml"
 config = os.path.exists(path)
+print(os.getcwd())
 
 # get config values from config.yml located in project folder.
 if config:
