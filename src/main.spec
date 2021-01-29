@@ -32,5 +32,14 @@ exe = EXE(pyz,
           runtime_tmpdir=None,
           console=True )
 
+coll = COLLECT(exe,
+               a.binaries,
+               a.zipfiles,
+               a.datas,
+               strip=False,
+               upx=True,
+               upx_exclude=[],
+               name='main')
+
 import shutil
 shutil.copyfile('config.yml', '{0}/config.yml'.format(DISTPATH))
