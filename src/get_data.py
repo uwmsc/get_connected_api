@@ -24,7 +24,12 @@ if getattr(sys, 'frozen', False):
     # extends the sys module by a flag frozen=True and sets the app 
     # path into variable _MEIPASS'.
     application_path = sys._MEIPASS
-    path = os.path.abspath(path)
+    if os.name == 'nt':
+        path = r'C:\get_connected_api\config.yaml'
+    elif os.name == 'posix':
+        path = r'$HOME/get_connected_api/config.yaml'
+    else:
+        path = os.path.abspath(path)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
     path = os.path.abspath(path)
