@@ -25,17 +25,15 @@ RUN apt-get -y install locales
 RUN locale-gen en_US.UTF-8
 RUN update-locale LANG=en_US.UTF-8
 
-#create working directory
-RUN mkdir /app
-VOLUME [ "/app" ]
-WORKDIR /app
-
 #install python dependencies
-# COPY requirements.txt .
-# RUN pip3 install -r requirements.txt
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
-#copy application files
-COPY ./app /app
+#create working directory
+RUN mkdir /src
+VOLUME [ "/src" ]
+COPY /src/app.py /src
+WORKDIR /src
 
-#RUN chmod +x sql_cmd.sh
-#ENTRYPOINT [ /app/sql_cmd.sh ]
+#run the application
+CMD python3 app.py

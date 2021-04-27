@@ -13,6 +13,7 @@ $creds.Password | docker login $registry.LoginServer -u $creds.Username --passwo
 $tag = $DockerImageTag
 $newTag = $registry.LoginServer + '/' + $tag
 
+cd ../../ 
 #build and push image
 docker build . -t $newTag
 docker push $newTag
