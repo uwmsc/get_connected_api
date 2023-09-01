@@ -5,3 +5,4 @@ dist/
 build/
 results/
 __pycache__
+.env_vars
