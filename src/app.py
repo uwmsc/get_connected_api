@@ -29,7 +29,8 @@ params = urllib.parse.quote_plus(
 )
 engine = create_engine("mssql+pyodbc:///?odbc_connect={}".format(params))
 
-#execute the stored procedure gc.GetMaxids to get the last updated date for each entity and store the column name and value as a dictionary
+#execute the stored procedure gc.GetMaxids to get the last updated date 
+# #for each entity and store the column name and value as a dictionary
 api_entities = {}
 with engine.connect() as con:
     rs = con.execute(text('exec gc.GetMaxDates'))
@@ -68,20 +69,27 @@ for entity, since_updated in api_entities.items():
             else:
                 break
         else:
-            print(f'Failed request for {entity} on page {page}. Status Code: {response.status_code}')
+            if page == 1:
+                print(f'''Failed request for {entity} on page {page}. Status Code: {response.status_code}''')
+            else: 
+                print(f'Finished {entity} retrieval on page {page}.')
             break
-    #results_json = json.dump(all_results, f, indent=2)
+    
     #convert all_results to a dataframe with all values as strings
     df = pandas.json_normalize(all_results)
-    #df = pandas.DataFrame(all_results)
+
     #uncomment this line to use this to recreate the tables in the database. 
     #This will drop the table and recreate it with the new data
     #df.to_sql(f"{entity}_staging", con = engine, schema= 'gc', if_exists= 'replace', chunksize=10000)
     df.to_sql(f"{entity}_staging", con = engine, schema= 'gc', if_exists='append', chunksize=10000)
 
-    all_results.sort(key=lambda x: x['updated_at'])
-    print(f'Finished {entity} processing uploaded last {since_updated}. Total records: {len(all_results)}. Last updated: {all_results[-1]["updated_at"]}. First updated: {all_results[0]["updated_at"]}')
-
+    if all_results:
+        print(f'''Finished {entity} upload to database. Uploaded last {since_updated}. 
+            Total records: {len(all_results)}. 
+            Last updated: {all_results[-1]["updated_at"]}. 
+            First updated: {all_results[0]["updated_at"]}''')
+    else:
+        print(f'No records found for {entity}.')
 
     # # Insert into database
     # # WARNING you may need to configure the mssql driver first per the url in the config file

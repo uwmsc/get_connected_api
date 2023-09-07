@@ -3,17 +3,20 @@ import pytz
 from datetime import datetime, timedelta
 
 class ApiTokenManager:
-    def __init__(self, api_key_secret, gc_pass, gc_user):
-        self.api_key_secret = api_key_secret
-        self.gc_pass = gc_pass
-        self.gc_user = gc_user
+    def __init__(self, app_config):
+        self.app_config = app_config
 
     def get_headers_and_expiry(self):
-        # login data
+        # Retrieve API configuration values from AppConfig
+        api_key_secret = self.app_config.get_api_key()
+        gc_pass = self.app_config.get_password()
+        gc_user = self.app_config.get_user()
+
+        # Login data
         login_data = {
-            'user_email': self.gc_user,
-            'user_password': self.gc_pass,
-            'key': self.api_key_secret
+            'user_email': gc_user,
+            'user_password': gc_pass,
+            'key': api_key_secret
         }
         
         # create the login url
