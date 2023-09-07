@@ -1,161 +1,98 @@
-#!/usr/bin/env python3
-
-from os.path import split
-import sys
+"""test this thing"""
+from datetime import datetime, timedelta
+import os
 import requests
 import json
-import os
-import time
+from ApiTokenManager import ApiTokenManager
+from AppConfig import AppConfig
+from sqlalchemy import text, create_engine, MetaData, event
+from sqlalchemy.orm import sessionmaker
 import pandas
-import sqlalchemy
 import urllib
-import configparser
 
-# test if config file exists
-# path = os.path.dirname(os.path.realpath(__file__)) + "config.yml"
-config_path = ".env_vars"
-config = os.path.exists(config_path)
+# Get the config
+config = AppConfig()
 
-#set env variables if working in ide dev environment else read env variables
-if config:
-    parser = configparser.SafeConfigParser()
-    parser.read(config_path)
-    sqlhost = parser['mssql']['SQL_HOST']
-    sqldb = parser['mssql']['DATABASE']
-    username = parser['mssql']['USERNAME']
-    password = parser['mssql']['PASSWORD']
-    api_key = parser['get_connected']['API_KEY_SECRET']
-    entity_list = parser['get_connected']['ENTITY_LIST'].split(",")
-    row_limit_override = parser['get_connected']['ROW_LIMIT']
-else:
-    sqlhost = os.getenv('SQL_HOST')
-    sqldb = os.getenv('DATABASE')
-    username = os.getenv('USERNAME')
-    password = os.getenv('PASSWORD')
-    api_key = os.getenv('API_KEY_SECRET')
-    entity_list = os.getenv('ENTITY_LIST').split(",")
-    row_limit_override = os.getenv('ROW_LIMIT')
-    
-# get data for each entity by modifying the request url
-for entity in entity_list:
-    # get the iterations
-    payload = {}
-    headers = {}
-    url = "https://api2.galaxydigital.com/" + entity + "/list?key=" + api_key 
-    response = requests.request("GET", url, headers=headers, data=payload)
-    rowcount = int(json.loads(response.text)['rows'])
-    limit = int(json.loads(response.text)['limit'])
-    iterations = (rowcount // limit)
-    entity_name = entity.replace('/','_') + '_staging'
+# Usage
+credentials = ApiTokenManager(config)
 
-    print("Beginning ", entity_name, " processing.")
-    print(entity_name, "rowcount = ", str(rowcount), " limit = ", str(limit), " iterations = ", str(iterations))
+headers_and_expiry = credentials.get_headers_and_expiry()
+# print(headers_and_expiry['headers'])
+# print('Token Expiry:', headers_and_expiry['token_expiry'])
 
-    # create file for raw json
-    timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
-    print(timestr)
-    rawFileName = 'rawdata_' + entity_name + timestr + '.json'
-    open(rawFileName, 'a').close()
+params = urllib.parse.quote_plus(
+     f'''DRIVER={{ODBC Driver 17 for SQL Server}};
+    SERVER={credentials.app_config.sqlhost};
+    DATABASE={credentials.app_config.sqldb};
+    UID={credentials.app_config.username};
+    PWD={credentials.app_config.password}'''
+)
+engine = create_engine("mssql+pyodbc:///?odbc_connect={}".format(params))
 
-    # pull the data paginated by row offset 
-    i = 0
-    while i < rowcount:
-        # set rowcount to low number for testing/debugging. Comment this out to return the full rowsets
-        if int(row_limit_override) > 0:
-            rowcount = int(row_limit_override)
+#execute the stored procedure gc.GetMaxids to get the last updated date 
+# #for each entity and store the column name and value as a dictionary
+api_entities = {}
+with engine.connect() as con:
+    rs = con.execute(text('exec gc.GetMaxDates'))
+    for row in rs:
+        column_names = row._mapping.keys()
+        for column_name, date_value in zip(column_names, row):
+            api_entities[column_name.lower()] = date_value
+#remove the id key from the dictionary
+api_entities.pop('id')
 
-        # Show progress
-        print(str(i) + ' of ' + str(rowcount) + ' ' + entity)
+base_url = 'https://www.volunteerapi.com/api/'
 
-        # build request url
-        url = "https://api2.galaxydigital.com/" + entity + "/list?key=" + api_key + "&offset=" + str(i)
-        
-        # increment by offset
-        i += limit
+for entity, since_updated in api_entities.items():
+    page = 1
+    all_results = []
 
-        # Get raw data and serialize to json
-        payload = {}
-        headers = {}
-        response = requests.request("GET", url, headers=headers, data=payload)
-        parsedJson = json.loads(response.text)
-        data = json.dumps(parsedJson['data'])
-        dataJson = json.loads(data)
-        
-        # Save raw data to staging file
-        with open(rawFileName, 'a') as f:
-            f.write(data)
-            dataFileName = 'data_' + entity_name + timestr + '.json'
-
-    # remove square brackets to create one json object
-    replacements = {'][':','}
-    with open(rawFileName) as infile, open(dataFileName, 'w') as outfile:
-        for line in infile:
-            for src, target in replacements.items():
-                line = line.replace(src, target)
-            outfile.write(line)
-
-    # delete rawdatafile
-    os.remove(rawFileName)
-
-    # remove any nested columns from the dataset. all_discards is there in case it's needed in the future.
-    with open(dataFileName, 'r') as all_json:
-        all_data = json.load(all_json)
-
-    all_keeps = []
-    all_discards = []
-
-    for i in all_data:
-        keep_row = {}
-        keep_key = []
-        keep_value = []
-        discard_row = {}
-        discard_key = []
-        discard_value = []
-        
-        for key, value in i.items():
-            # print(key, '->', value)
-            if type(value) is list or type(value) is dict:
-                # print("Discarding ", key, "->", value, "as it is type", type(value))
-                discard_key.append(key)
-                discard_value.append(value)
-            else: 
-                keep_key.append(key)
-                keep_value.append(value)
-        
-        keep = zip(keep_key, keep_value)
-        for k, v in keep:
-            keep_row[k] = v
-        keep_row_copy = keep_row.copy()
-        all_keeps.append(keep_row_copy)
-
-        discard = zip(discard_key, discard_value)
-        for k, v in discard:
-            discard_row[k] = v
-        discard_row_copy = discard_row.copy()
-        all_discards.append(discard_row_copy)
-
-    # Insert into database
-    # WARNING you may need to configure the mssql driver first per the url in the config file
-    from sqlalchemy import MetaData, event
-    from sqlalchemy.orm import sessionmaker
-
-    params = urllib.parse.quote_plus("DRIVER={ODBC+Driver+17+for+SQL+Server};SERVER=" + sqlhost + ";DATABASE=" + sqldb + ";UID=" + username + ";PWD=" + password)
-
-    engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect={}".format(params))
-
-    # this speeds up inserts by waiting for all the data.
+    # # this speeds up inserts by waiting for all the data.
     @event.listens_for(engine, "before_cursor_execute")
     def receive_before_cursor_execute(
-       conn, cursor, statement, params, context, executemany
+    conn, cursor, statement, params, context, executemany
         ):
             if executemany:
                 cursor.fast_executemany = True
 
-    df = pandas.DataFrame(all_keeps)
-    df.to_sql(entity_name, con = engine, schema= 'gc', if_exists= 'replace', chunksize=10000)
+    while True:
+        # Construct the URL with entity, timestamp and pagenumber
+        url = f'{base_url}{entity}?since_updated={since_updated}&page={page}'
+        response = requests.get(url, headers=headers_and_expiry['headers'], timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                #only add the data in the data object
+                all_results.extend(data['data'])
+                page += 1
+            else:
+                break
+        else:
+            if page == 1:
+                print(f'''Failed request for {entity} on page {page}. Status Code: {response.status_code}''')
+            else: 
+                print(f'Finished {entity} retrieval on page {page}.')
+            break
+    
+    #convert all_results to a dataframe with all values as strings
+    df = pandas.json_normalize(all_results)
 
-    os.remove(dataFileName)
-    print("Ending ", entity_name, " processing.")
+    #uncomment this line to use this to recreate the tables in the database. 
+    #This will drop the table and recreate it with the new data
+    #df.to_sql(f"{entity}_staging", con = engine, schema= 'gc', if_exists= 'replace', chunksize=10000)
+    df.to_sql(f"{entity}_staging", con = engine, schema= 'gc', if_exists='append', chunksize=10000)
 
-print("Finished")
-sys.exit()
+    if all_results:
+        print(f'''Finished {entity} upload to database. Uploaded last {since_updated}. 
+            Total records: {len(all_results)}. 
+            Last updated: {all_results[-1]["updated_at"]}. 
+            First updated: {all_results[0]["updated_at"]}''')
+    else:
+        print(f'No records found for {entity}.')
+
+    # # Insert into database
+    # # WARNING you may need to configure the mssql driver first per the url in the config file
+    # from sqlalchemy import MetaData, event
+    #from sqlalchemy.orm import sessionmaker
+    # engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect={}".format(params))

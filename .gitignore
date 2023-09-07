@@ -3,3 +3,7 @@ env/
 .vscode/
 dist/
 build/
+results/
+__pycache__
+.env_vars
+get_connected_api_venv/
